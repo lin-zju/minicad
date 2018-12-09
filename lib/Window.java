@@ -1,4 +1,6 @@
 package lib;
 
-public class Window {
+import javax.swing.*;
+
+public class Window extends JFrame {
 }

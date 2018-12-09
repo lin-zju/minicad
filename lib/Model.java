@@ -10,6 +10,9 @@ public class Model {
     public void modified() {
         view.modified();
     }
+    public void setView(View view) {
+        this.view = view;
+    }
 
     private ArrayList<Shape> shapeList = new ArrayList<>();
     private View view;
