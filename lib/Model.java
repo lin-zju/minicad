@@ -16,5 +16,4 @@ public class Model {
 
     private ArrayList<Shape> shapeList = new ArrayList<>();
     private View view;
-
 }

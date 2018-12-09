@@ -32,17 +32,10 @@ abstract public class Shape implements Serializable {
         scaleShape(factor);
     }
 
-    public void moveLeft(int offset) {
-        moveBy(offset, LEFT);
-    }
-    public void moveRight(int offset) {
-        moveBy(offset, RIGHT);
-    }
-    public void moveUp(int offset) {
-        moveBy(offset, UP);
-    }
-    public void moveDown(int offset) {
-        moveBy(offset, DOWN);
+    public void move(int dx, int dy) {
+        for (Point p : points) {
+            p.translate(dx, dy);
+        }
     }
     public void setPoint(int index, int x, int y) {
         Point p = points.get(index);
@@ -102,20 +95,6 @@ abstract public class Shape implements Serializable {
         for (Point p: points) {
             p.setLocation((int)(factor * p.getX()), (int)(factor * p.getY()));
         }
-    }
-    private void moveBy(int offset, int direction) {
-        int dx = 0;
-        int dy = 0;
-        switch (direction) {
-            case LEFT: dx = -offset; break;
-            case RIGHT: dx = offset; break;
-            case UP: dy = -offset; break;
-            case DOWN: dy = offset; break;
-        }
-        for (Point p : points) {
-            p.translate(dx, dy);
-        }
-
     }
     protected static double findDistanceToLine(Point p1, Point p2, Point p) {
         double x1 = p1.getX(), y1 = p1.getY(), z1 = 1.0;
@@ -236,7 +215,16 @@ class Ellipse extends Shape {
     }
 }
 
-class Polygon extends Shape {
+abstract class Poly extends Shape {
+    public void addPoint(int x, int y) {
+        points.add(new Point(x, y));
+    }
+    public void removeLast() {
+        points.remove(points.size() - 1);
+    }
+}
+
+class Polygon extends Poly {
     public Polygon() { }
     public void render(Graphics2D g) {
         super.render(g);
@@ -245,12 +233,6 @@ class Polygon extends Shape {
             polygon.addPoint(p.x, p.y);
         }
         g.drawPolygon(polygon);
-    }
-    public void addPoint(int x, int y) {
-        points.add(new Point(x, y));
-    }
-    public void removeLast() {
-        points.remove(points.size() - 1);
     }
 
     @Override
@@ -272,7 +254,7 @@ class Polygon extends Shape {
     private static final double threshold = 10.0;
 }
 
-class Polyline extends Shape {
+class Polyline extends Poly {
     public Polyline() { }
     public void render(Graphics2D g) {
         super.render(g);
@@ -289,12 +271,6 @@ class Polyline extends Shape {
             yPoints[i] = yList.get(i);
         }
         g.drawPolyline(xPoints, yPoints, points.size());
-    }
-    public void addPoint(int x, int y) {
-        points.add(new Point(x, y));
-    }
-    public void removeLast() {
-        points.remove(points.size() - 1);
     }
 
     @Override
@@ -333,6 +309,10 @@ class Text extends Shape {
     @Override
     public boolean fallsWithin(Point p) {
         return fallsWithinBoundingBox(p);
+    }
+
+    public void setStr(String str) {
+        this.str = str;
     }
 
     private String str;
