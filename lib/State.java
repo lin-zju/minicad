@@ -1,5 +1,6 @@
 package lib;
 
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
@@ -47,18 +48,13 @@ abstract public class State {
             case POLYGON:
                 returnState = new DrawPolygon(this);
                 break;
+            case TEXT:
+                returnState = new DrawText(this);
+                break;
         }
         return returnState;
     }
 
-    public State changeState(int state, String str) {
-        if (state == TEXT)
-            returnState = new DrawText(this, str);
-        else
-            System.exit(0);
-        return returnState;
-
-    }
 
     public State setFilled(boolean filled) {
         this.filled = filled;
@@ -70,7 +66,7 @@ abstract public class State {
         return this;
     }
 
-    public State setStroke(Stroke stroke) {
+    public State setStroke(float width) {
         this.stroke = stroke;
         return this;
     }
@@ -109,7 +105,7 @@ abstract public class State {
     protected ArrayList<Shape> shapeList;
     protected boolean filled;
     protected Color color = Color.BLACK;
-    protected Stroke stroke = new BasicStroke(10f);
+    protected float stroke = 10.0f;
     protected State returnState = this;
     protected Model model;
 }
@@ -223,9 +219,9 @@ class DrawText extends State {
 //        super(shapeList);
 //    }
 
-    public DrawText(State state, String text) {
+    public DrawText(State state) {
         super(state);
-        this.text = text;
+        this.text = JOptionPane.showInputDialog("Enter text:");
     }
     public State mousePressed(MouseEvent e) {
         super.mousePressed(e);
@@ -327,15 +323,17 @@ class Select extends State {
         return this;
     }
 
-    public State setStroke(Stroke stroke) {
-        super.setStroke(stroke);
+    @Override
+    public State setStroke(float width) {
+        super.setStroke(width);
         if (current != null) {
-            current.setStroke(stroke);
+            current.setStroke(width);
             model.modified();
         }
         return this;
     }
 
+    @Override
     public State makeLarger() {
         if (current != null) {
             current.makeLarger(5);
@@ -343,6 +341,8 @@ class Select extends State {
         }
         return this;
     }
+
+    @Override
     public State makeSmaller() {
         if (current != null) {
             current.makeSmaller(5);
@@ -351,6 +351,7 @@ class Select extends State {
         return this;
     }
 
+    @Override
     public State setText(String str) {
         if (current != null && current instanceof Text) {
             ((Text)current).setStr(str);
@@ -359,6 +360,7 @@ class Select extends State {
         return this;
     }
 
+    @Override
     public State mousePressed(MouseEvent e) {
         boolean flag = false;
         lastX = e.getX();
@@ -378,12 +380,14 @@ class Select extends State {
     }
 
 
+    @Override
     public State mouseDragged(MouseEvent e) {
         if (current != null) {
             current.move(e.getX() - lastX, e.getY() - lastY);
             lastX = e.getX();
             lastY = e.getY();
         }
+        return this;
     }
 
     Shape current = null;

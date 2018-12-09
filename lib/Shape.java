@@ -55,10 +55,10 @@ abstract public class Shape implements Serializable {
     }
 
     // private part
-    protected ArrayList<Point> points;
-    private Color color;
-    private BasicStroke stroke;
-    protected boolean filled;
+    protected ArrayList<Point> points = new ArrayList<>();
+    private Color color = Color.BLACK;
+    private BasicStroke stroke = new BasicStroke(2.0f);
+    protected boolean filled = false;
 
     private static final int LARGER = 0;
     private static final int SMALLER = 1;
