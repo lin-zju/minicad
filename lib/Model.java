@@ -14,6 +14,10 @@ public class Model {
         this.view = view;
     }
 
+    public void setShapeList(ArrayList<Shape> shapeList) {
+        this.shapeList = shapeList;
+    }
+
     private ArrayList<Shape> shapeList = new ArrayList<>();
     private View view;
 }

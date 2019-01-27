@@ -1,9 +1,13 @@
 package lib;
 
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.MouseEvent;
+import java.io.File;
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.HashMap;
 
 abstract public class State {
     public static final int LINE = 0;
@@ -12,6 +16,8 @@ abstract public class State {
     public static final int POLYLINE = 3;
     public static final int POLYGON = 4;
     public static final int TEXT = 5;
+    public static final int IMAGE = 6;
+    public static final int SELECT = 7;
 
     public static final int LEFT_BUTTON = 0;
     public static final int RIGHT_BUTTON = 1;
@@ -24,33 +30,30 @@ abstract public class State {
     }
 
     protected State(State state) {
-        this.shapeList = state.shapeList;
         this.filled = state.filled;
         this.color = state.color;
         this.stroke = state.stroke;
-        this.model = model;
+        this.model = state.model;
+        this.shapeList = model.getShapeList();
     }
 
+
     public State changeState(int state) {
-        switch (state) {
-            case LINE:
-                returnState = new DrawLine(this);
-                break;
-            case RECT:
-                returnState = new DrawRect(this);
-                break;
-            case OVAL:
-                returnState = new DrawOval(this);
-                break;
-            case POLYLINE:
-                returnState = new DrawPolyline(this);
-                break;
-            case POLYGON:
-                returnState = new DrawPolygon(this);
-                break;
-            case TEXT:
-                returnState = new DrawText(this);
-                break;
+        HashMap<Integer, Class> constToClass = new HashMap<>();
+        constToClass.put(LINE, DrawLine.class);
+        constToClass.put(RECT, DrawRect.class);
+        constToClass.put(OVAL, DrawOval.class);
+        constToClass.put(POLYLINE, DrawPolyline.class);
+        constToClass.put(POLYGON, DrawPolygon.class);
+        constToClass.put(TEXT, DrawText.class);
+        constToClass.put(IMAGE, DrawImage.class);
+        constToClass.put(SELECT, Select.class);
+        try {
+            Constructor<State> ctor = constToClass.get(state).getConstructor(State.class);
+            returnState = ctor.newInstance(this);
+        }
+        catch (Exception e) {
+            e.printStackTrace();
         }
         return returnState;
     }
@@ -101,6 +104,8 @@ abstract public class State {
     public State delete() {
         return this;
     }
+
+    public State duplicate() { return this; }
 
     protected ArrayList<Shape> shapeList;
     protected boolean filled;
@@ -163,7 +168,7 @@ class DrawOval extends State {
     public State mousePressed(MouseEvent e) {
         super.mousePressed(e);
         if (e.getButton() == MouseEvent.BUTTON1) {
-            shapeList.add(new Rectangle(e.getX(), e.getY(), e.getX(), e.getY()));
+            shapeList.add(new Oval(e.getX(), e.getY(), e.getX(), e.getY()));
         }
         model.modified();
         return new Drawing(this);
@@ -215,9 +220,6 @@ class DrawPolyline extends State {
     }
 }
 class DrawText extends State {
-//    public DrawText(ArrayList<Shape> shapeList) {
-//        super(shapeList);
-//    }
 
     public DrawText(State state) {
         super(state);
@@ -229,12 +231,41 @@ class DrawText extends State {
             shapeList.add(new Text(text, e.getX(), e.getY(), e.getX(), e.getY()));
         }
         model.modified();
-        return new DrawingPoly(this);
+        return new Drawing(this);
     }
     String text;
 
 }
 
+class DrawImage extends State {
+
+    public DrawImage(State state) {
+        super(state);
+        setImage();
+    }
+    private void setImage() {
+        JFileChooser chooser = new JFileChooser();
+        FileNameExtensionFilter filter = new FileNameExtensionFilter(
+                "Images", "jpg", "png", "jpeg");
+        chooser.setFileFilter(filter);
+        int returnVal = chooser.showOpenDialog(null);
+        if(returnVal == JFileChooser.APPROVE_OPTION) {
+            File file = chooser.getSelectedFile();
+            ImageIcon icon = new ImageIcon(file.getAbsolutePath());
+            image = icon;
+        }
+    }
+    public State mousePressed(MouseEvent e) {
+        super.mousePressed(e);
+        if (e.getButton() == MouseEvent.BUTTON1) {
+            shapeList.add(new Image(image, e.getX(), e.getY(), e.getX(), e.getY()));
+        }
+        model.modified();
+        return new Drawing(this);
+    }
+    ImageIcon image;
+
+}
 class Drawing extends State {
 
     public Drawing(State state) {
@@ -244,7 +275,7 @@ class Drawing extends State {
     }
 
     @Override
-    public State mouseMoved(MouseEvent e) {
+    public State mouseDragged(MouseEvent e) {
         super.mouseMoved(e);
         shape.setPoint(1, e.getX(), e.getY());
         model.modified();
@@ -279,13 +310,14 @@ class DrawingPoly extends State {
         if (e.getButton() == MouseEvent.BUTTON1) {
             shape.addPoint(e.getX(), e.getY());
             i++;
+            model.modified();
             return this;
         }
         else if (e.getButton() == MouseEvent.BUTTON3) {
             shape.removeLast();
+            model.modified();
             return last;
         }
-        model.modified();
         return this;
     }
 
@@ -307,7 +339,7 @@ class Select extends State {
     public State setFilled(boolean filled) {
         super.setFilled(filled);
         if (current != null) {
-            current.setFilled(true);
+            current.setFilled(filled);
             model.modified();
         }
 
@@ -366,10 +398,12 @@ class Select extends State {
         lastX = e.getX();
         lastY = e.getY();
         if (e.getButton() == MouseEvent.BUTTON1) {
-            for (Shape shape : shapeList) {
+            for (int i = shapeList.size() - 1; i >= 0; i--) {
+                Shape shape = shapeList.get(i);
                 if (shape.fallsWithin(e.getPoint())) {
                     flag = true;
                     current = shape;
+                    currentI = i;
                     break;
                 }
             }
@@ -386,11 +420,36 @@ class Select extends State {
             current.move(e.getX() - lastX, e.getY() - lastY);
             lastX = e.getX();
             lastY = e.getY();
+            model.modified();
+        }
+        return this;
+    }
+
+    @Override
+    public State delete() {
+        if (current != null)
+            shapeList.remove(currentI);
+        current = null;
+        model.modified();
+        return this;
+    }
+
+    @Override
+    public State duplicate() {
+        if (current != null) {
+            try {
+                shapeList.add((Shape)shapeList.get(currentI).clone());
+                currentI = shapeList.size() - 1;
+                current = shapeList.get(currentI);
+                model.modified();
+            }
+            catch (CloneNotSupportedException e) { }
         }
         return this;
     }
 
     Shape current = null;
+    int currentI = 0;
     int lastX;
     int lastY;
 
